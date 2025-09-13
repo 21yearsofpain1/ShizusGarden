@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Shizu's Garden</title>
+  <style>
+    /* ---------- Base / Sky ---------- */
+    :root{
+      --garden-padding: 8vh;
+    }
+    html,body { height:100%; }
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: "Arial", sans-serif;
+      background: linear-gradient(120deg,#fbc2eb,#a6c1ee);
+      animation: skyShift 20s ease-in-out infinite alternate;
+    }
+    @keyframes skyShift {
+      0%   { background: linear-gradient(120deg,#fbc2eb,#a6c1ee); }
+      50%  { background: linear-gradient(120deg,#ffecd2,#fcb69f); }
+      100% { background: linear-gradient(120deg,#a1c4fd,#c2e9fb); }
+    }
+
+    /* ---------- HUD ---------- */
+    #progress {
+      position: absolute;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 60;
+      color: #fff;
+      font-size: 1.2rem;
+      text-shadow: 0 0 8px rgba(0,0,0,0.6);
+      padding: 6px 10px;
+      border-radius: 10px;
+      background: rgba(0,0,0,0.12);
+      backdrop-filter: blur(4px);
+    }
+
+    #love-message {
+      position: absolute;
+      left: 50%;
+      transform: translate(-50%,-50%);
+      top: 40%;
+      z-index: 120;
+      color: #fff;
+      font-size: 3rem;
+      text-shadow: 0 0 24px rgba(255,182,193,0.95);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* ---------- Garden container ---------- */
+    .garden {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      padding: var(--garden-padding);
+    }
+
+    /* ---------- Flower (base) ---------- */
+    .flower {
+      position: absolute;
+      width: 100px;
+      height: 140px;
+      cursor: pointer;
+      user-select: none;
+      transition: left 3s ease-in-out, top 3s ease-in-out, transform 0.45s ease;
+      will-change: left, top, transform;
+      z-index: 30;
+      transform-origin: 50% 90%;
+    }
+    /* scaled variants */
+    .flower.small { width: 64px; height: 90px; transform: scale(0.6); }
+    .flower.tiny  { width: 48px; height: 70px; transform: scale(0.45); }
+    .flower.large { width: 140px; height: 180px; transform: scale(1.1); z-index:80; }
+
+    .flower:hover { transform: translateY(-6px) scale(1.05) rotate(-2deg); }
+
+    .stem {
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 6px;
+      height: 70px;
+      background: linear-gradient(#2f882f,#1b5e1b);
+      border-radius: 6px;
+    }
+
+    .leaf {
+      position: absolute;
+      bottom: 22px;
+      width: 22px;
+      height: 12px;
+      background: linear-gradient(#3aa93a,#1b7f1b);
+      border-radius: 12px;
+    }
+    .leaf.left  { left: -20px; transform: rotate(-28deg); }
+    .leaf.right { right: -20px; transform: rotate(28deg); }
+
+    .bud, .petal {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-radius: 50%;
+      transition: all 900ms ease;
+      box-shadow: 0 0 6px rgba(0,0,0,0.15) inset;
+    }
+
+    .bud {
+      width: 28px;
+      height: 28px;
+      background: #555;
+    }
+
+    .petal {
+      opacity: 0;
+      width: 0;
+      height: 0;
+      box-shadow: 0 0 12px rgba(255,255,255,0.6);
+      background: linear-gradient(135deg,#ffd3e6,#ff9fc4);
+    }
+
+    .flower.bloomed .bud{
+      opacity: 0;
+      transform: translateX(-50%) scale(0.4);
+    }
+    .flower.bloomed .petal {
+      opacity: 1;
+      width: 34px;
+      height: 54px;
+    }
+
+    .petal1 { transform: translate(-50%,-36px) rotate(0deg); }
+    .petal2 { transform: translate(-78%,-18px) rotate(-45deg); }
+    .petal3 { transform: translate(-22%,-18px) rotate(45deg); }
+    .petal4 { transform: translate(-78%,18px) rotate(-90deg); }
+    .petal5 { transform: translate(-22%,18px) rotate(90deg); }
+
+    /* ---------- Sparkles & small effects ---------- */
+    .sparkle {
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      background: white;
+      border-radius: 50%;
+      opacity: 0.95;
+      box-shadow: 0 0 12px rgba(255,255,255,0.9);
+      animation: sparkleFloat 3s linear forwards;
+      pointer-events: none;
+    }
+    @keyframes sparkleFloat {
+      from { transform: translateY(0) scale(1); opacity: 1; }
+      to   { transform: translateY(-140px) scale(0.3); opacity: 0; }
+    }
+
+    /* ---------- Falling petals (background while playing) ---------- */
+    .falling-petal {
+      position: absolute;
+      width: 15px;
+      height: 20px;
+      background: pink;
+      border-radius: 50% 50% 50% 50%;
+      opacity: 0.75;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.12));
+      animation-name: fallPetal;
+      animation-timing-function: linear;
+      animation-iteration-count: infinite;
+      pointer-events: none;
+      z-index: 10;
+    }
+    @keyframes fallPetal {
+      from { transform: translateY(-20vh) rotate(0deg); opacity: 1; }
+      to   { transform: translateY(110vh) rotate(360deg); opacity: 0; }
+    }
+
+    /* ---------- Sakura Trees ---------- */
+    .tree {
+      position: absolute;
+      bottom: -20px;
+      width: 160px;
+      height: 420px;
+      background: sienna;
+      border-radius: 20px;
+      z-index: 5;
+      box-shadow: 0 20px 80px rgba(0,0,0,0.15);
+    }
+    .tree.left  { left: -60px; transform: rotate(-6deg); }
+    .tree.right { right: -60px; transform: rotate(6deg); }
+
+    .tree .canopy {
+      position: absolute;
+      bottom: 240px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 380px;
+      height: 230px;
+      background: radial-gradient(circle at 40% 30%, #ffd1e7, #f7a1d0);
+      border-radius: 50%;
+      box-shadow: 0 0 60px rgba(255,192,203,0.5);
+      z-index: -1;
+    }
+
+    /* ---------- Winning overlay ---------- */
+    #winOverlay {
+      position: absolute;
+      inset: 0;
+      display: none;
+      z-index: 110;
+      overflow: hidden;
+      backdrop-filter: blur(4px);
+    }
+    #winOverlay.bg {
+      /* animated rainbow / soft pastel */
+      background: linear-gradient(135deg,#ff9a9e,#fad0c4,#fbc2eb,#a1c4fd,#c2e9fb);
+      background-size: 400% 400%;
+      animation: rainbowBG 12s ease infinite;
+      opacity: 0;
+      transition: opacity 1.2s ease;
+    }
+    @keyframes rainbowBG {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    /* win center message */
+    .winMessage {
+      position: absolute;
+      left: 50%;
+      top: 40%;
+      transform: translate(-50%,-50%);
+      text-align: center;
+      z-index: 300;
+      color: #fff;
+      text-shadow: 0 4px 26px rgba(0,0,0,0.35);
+    }
+    .winMessage h1 {
+      font-size: 3.6rem;
+      margin: 0 0 8px 0;
+    }
+    .winMessage p {
+      margin: 0 0 16px 0;
+      font-size: 1.2rem;
+      opacity: 0.95;
+    }
+    .btn {
+      display: inline-block;
+      padding: 10px 18px;
+      border-radius: 999px;
+      background: linear-gradient(90deg,#fff2,#ffffffaa);
+      border: 1px solid rgba(255,255,255,0.6);
+      cursor: pointer;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.18);
+      font-weight: 700;
+      color: #6b216b;
+    }
+
+    /* floating win flowers */
+    .winFlower {
+      position: absolute;
+      width: 64px;
+      height: 90px;
+      transform-origin: 50% 90%;
+      opacity: 0;
+      transition: opacity 700ms ease, transform 900ms ease;
+      z-index: 200;
+    }
+    .winFlower.bloomed { opacity: 1; }
+    @keyframes floatSway {
+      0%   { transform: translateY(0) rotate(-4deg); }
+      50%  { transform: translateY(-18px) rotate(4deg); }
+      100% { transform: translateY(0) rotate(-4deg); }
+    }
+
+    /* overlay sakura petals */
+    .overlay-petal {
+      position: absolute;
+      width: 18px;
+      height: 22px;
+      border-radius: 50%;
+      background: linear-gradient(180deg,#ffd6e9,#ffc0dd);
+      opacity: 0.95;
+      pointer-events: none;
+      z-index: 210;
+      animation-name: fallOverlay;
+      animation-iteration-count: infinite;
+      animation-timing-function: linear;
+    }
+    @keyframes fallOverlay {
+      0% { transform: translateY(-15vh) rotate(0deg); opacity: 1; }
+      100%{ transform: translateY(110vh) rotate(360deg); opacity: 0; }
+    }
+
+    /* little overlay sparkles */
+    .overlay-spark {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.95);
+      box-shadow: 0 0 24px rgba(255,255,255,0.9);
+      z-index: 220;
+      opacity: 0.95;
+      animation: floatSpark 3s linear infinite;
+      pointer-events: none;
+    }
+    @keyframes floatSpark { 0%{transform:translateY(0)} 100%{transform:translateY(-120px)} }
+
+    /* small util */
+    .hidden { display:none !important; }
+  </style>
+</head>
+<body>
+  <div id="progress">Flowers Bloomed: 0 / 16</div>
+
+  <div class="garden"></div>
+
+  <h1 id="love-message">Shizu, I love you ❤️</h1>
+
+  <!-- Sakura trunks (decor) -->
+  <div class="tree left"><div class="canopy"></div></div>
+  <div class="tree right"><div class="canopy"></div></div>
+
+  <!-- falling petals during play (added via JS) -->
+
+  <!-- Winning overlay -->
+  <div id="winOverlay" class="bg" aria-hidden="true">
+    <div class="winMessage" id="winMessage">
+      <h1>🌸🌸🌸</h1>
+      <p>All the flowers opened for Shizu — Congratulations!</p>
+      <button class="btn" id="replayBtn">Play Again</button>
+    </div>
+    <!-- overlay contents (flowers, petals, sparkles) appended by JS -->
+  </div>
+
+  <script>
+    /********** Helpers **********/
+    const garden = document.querySelector('.garden');
+    const progress = document.getElementById('progress');
+    const loveMessage = document.getElementById('love-message');
+    const winOverlay = document.getElementById('winOverlay');
+    const replayBtn = document.getElementById('replayBtn');
+
+    let totalFlowers = 16;
+    let bloomedCount = 0;
+    const moveIntervals = new Map();
+
+    // Create a flower DOM element (reusable)
+    function createFlowerElement(size = 'normal') {
+      const flower = document.createElement('div');
+      flower.className = 'flower';
+      if (size === 'small') flower.classList.add('small');
+      if (size === 'tiny')  flower.classList.add('tiny');
+      if (size === 'large') flower.classList.add('large');
+      flower.innerHTML = `
+        <div class="stem"></div>
+        <div class="leaf left"></div>
+        <div class="leaf right"></div>
+        <div class="bud"></div>
+        <div class="petal petal1"></div>
+        <div class="petal petal2"></div>
+        <div class="petal petal3"></div>
+        <div class="petal petal4"></div>
+        <div class="petal petal5"></div>
+      `;
+      return flower;
+    }
+
+    // Random helper
+    function rand(min, max) { return Math.random() * (max - min) + min; }
+
+    /********** Spawn main moving flowers **********/
+    const flowers = [];
+    for (let i = 0; i < totalFlowers; i++) {
+      const f = createFlowerElement();
+      garden.appendChild(f);
+      flowers.push(f);
+
+      // random start within safe margins
+      const left = rand(3, 89);
+      const top  = rand(12, 78);
+      f.style.left = `${left}vw`;
+      f.style.top  = `${top}vh`;
+
+      // give each flower a slightly different transition speed for smooth motion
+      const t = (2.5 + Math.random() * 2.2).toFixed(2) + 's';
+      f.style.transitionDuration = `${t}, ${t}, 0.45s`;
+
+      // movement function
+      function randomMove() {
+        if (f.classList.contains('bloomed')) return;
+        const l = rand(3, 89);
+        const t = rand(12, 78);
+        f.style.left = `${l}vw`;
+        f.style.top = `${t}vh`;
+      }
+      // initial staggered movements for variety
+      const interval = setInterval(randomMove, 2500 + Math.random() * 2200);
+      moveIntervals.set(f, interval);
+
+      // click to bloom
+      f.addEventListener('click', () => {
+        if (f.classList.contains('bloomed')) return;
+        f.classList.add('bloomed');
+
+        // stop movement for this flower
+        clearInterval(moveIntervals.get(f));
+        moveIntervals.delete(f);
+
+        bloomedCount++;
+        progress.textContent = `Flowers Bloomed: ${bloomedCount} / ${totalFlowers}`;
+
+        bloomEffect(f);
+
+        // small falling petals from that flower for extra flare
+        spawnTinyPetalsAt(f);
+
+        if (bloomedCount === totalFlowers) {
+          // show win screen after a short pause so last effects can play
+          setTimeout(showWinScreen, 1400);
+        }
+      });
+    }
+
+    /********** Bloom effects (sparkles, glow, pulse, spin) **********/
+    function bloomEffect(flower) {
+      const effects = ['sparkle', 'glow', 'pulse', 'spin'];
+      const effect = effects[Math.floor(Math.random() * effects.length)];
+
+      if (effect === 'sparkle') createSparkles(flower, 8);
+      if (effect === 'glow') flower.style.filter = 'drop-shadow(0 0 20px rgba(255,150,200,0.95))';
+      if (effect === 'pulse') flower.animate([
+        { transform: 'scale(1)' },
+        { transform: 'scale(1.25)' },
+        { transform: 'scale(1)' }
+      ], { duration: 900, easing: 'ease-in-out' });
+      if (effect === 'spin') flower.animate([
+        { transform: 'rotate(0deg)' },
+        { transform: 'rotate(360deg)' }
+      ], { duration: 900, easing: 'linear' });
+
+      // reveal petals (trigger CSS)
+      window.setTimeout(() => flower.classList.add('bloomed'), 10);
+
+      // small halo sparkles
+      createSparkles(flower, 10);
+    }
+
+    function createSparkles(container, count = 6) {
+      for (let i = 0; i < count; i++) {
+        const s = document.createElement('div');
+        s.className = 'sparkle';
+        s.style.left = `${rand(8, 76)}px`;
+        s.style.top  = `${rand(6, 80)}px`;
+        s.style.opacity = String(rand(0.6,1));
+        s.style.transform = `scale(${rand(0.6,1.2)})`;
+        container.appendChild(s);
+        // cleanup
+        setTimeout(() => s.remove(), 2800 + Math.random() * 800);
+      }
+    }
+
+    function spawnTinyPetalsAt(container) {
+      // spawn a few petals that float upward from the flower for visual
+      for (let i = 0; i < 6; i++) {
+        const p = document.createElement('div');
+        p.className = 'sparkle';
+        p.style.width = `${4 + Math.random()*6}px`;
+        p.style.height = p.style.width;
+        p.style.left = `${rand(12, 72)}px`;
+        p.style.top  = `${rand(6, 60)}px`;
+        p.style.background = Math.random() > 0.5 ? '#ffe0f0' : '#ffd0e8';
+        container.appendChild(p);
+        setTimeout(()=> p.remove(), 2000 + Math.random()*1200);
+      }
+    }
+
+    /********** Falling petals in the background during play **********/
+    (function createBackgroundPetals(){
+      const count = 28;
+      for (let i = 0; i < count; i++) {
+        const petal = document.createElement('div');
+        petal.className = 'falling-petal';
+        petal.style.left = `${Math.random() * 100}vw`;
+        petal.style.background = Math.random() > 0.5 ? 'pink' : 'lightpink';
+        petal.style.animationDuration = `${6 + Math.random() * 8}s`;
+        petal.style.animationDelay = `${Math.random() * 6}s`;
+        petal.style.opacity = `${0.4 + Math.random()*0.6}`;
+        document.body.appendChild(petal);
+      }
+    })();
+
+    /********** Winning overlay (flowers + sakura petals + sparkles) **********/
+    function showWinScreen() {
+      // fade out remaining UI elements gracefully
+      document.querySelectorAll('.falling-petal').forEach(el => el.style.opacity = '0.0');
+      // show overlay
+      winOverlay.style.display = 'block';
+      // force layout then fade in
+      requestAnimationFrame(()=> { winOverlay.style.opacity = '1'; winOverlay.setAttribute('aria-hidden','false'); });
+
+      // show love message
+      loveMessage.style.opacity = 1;
+
+      // center big floral display
+      const bigCenter = createFlowerElement('large');
+      bigCenter.classList.add('bloomed');
+      bigCenter.style.left = '50%';
+      bigCenter.style.top  = '48%';
+      bigCenter.style.transform = 'translate(-50%,-50%) scale(1.05)';
+      bigCenter.style.zIndex = 320;
+      winOverlay.appendChild(bigCenter);
+
+      // add many floating win flowers across the overlay
+      const winCount = 80;
+      for (let i = 0; i < winCount; i++) {
+        const wf = createFlowerElement('small');
+        wf.classList.add('winFlower','bloomed');
+        wf.style.left = `${rand(3, 93)}vw`;
+        wf.style.top  = `${rand(4, 92)}vh`;
+        wf.style.opacity = 0;
+        winOverlay.appendChild(wf);
+
+        // staggered fade-in and gentle floating
+        (function setFloat(el, idx){
+          setTimeout(()=>{
+            el.style.opacity = 1;
+            const dur = 4 + Math.random() * 6;
+            el.style.animation = `floatSway ${dur}s ease-in-out ${Math.random()*2}s infinite`;
+            el.style.transformOrigin = '50% 90%';
+          }, 50 + idx * 20);
+        })(wf, i);
+      }
+
+      // overlay sakura petals (lots)
+      const overlayPetalCount = 80;
+      for (let i = 0; i < overlayPetalCount; i++) {
+        const p = document.createElement('div');
+        p.className = 'overlay-petal';
+        p.style.left = `${Math.random()*100}vw`;
+        p.style.top  = `${-10 - Math.random()*25}vh`;
+        p.style.opacity = `${0.6 + Math.random()*0.35}`;
+        // randomize durations & delays
+        const d = 6 + Math.random() * 9;
+        p.style.animationDuration = `${d}s`;
+        p.style.animationDelay = `${Math.random()*4}s`;
+        winOverlay.appendChild(p);
+      }
+
+      // overlay sparkles
+      for (let i = 0; i < 24; i++) {
+        const s = document.createElement('div');
+        s.className = 'overlay-spark';
+        s.style.left = `${Math.random()*100}vw`;
+        s.style.top  = `${Math.random()*100}vh`;
+        s.style.opacity = `${0.6 + Math.random()*0.4}`;
+        const scale = 0.6 + Math.random()*1.8;
+        s.style.width = `${6 * scale}px`;
+        s.style.height = `${6 * scale}px`;
+        s.style.animationDuration = `${2 + Math.random()*3}s`;
+        winOverlay.appendChild(s);
+      }
+
+      // show a few larger bouquets / grouped flowers near bottom
+      for (let i = 0; i < 8; i++) {
+        const group = createFlowerElement('normal');
+        group.classList.add('bloomed');
+        group.style.left = `${5 + i * 11}%`;
+        group.style.top  = `${78 + Math.random()*6}%`;
+        group.style.transform = `translate(-50%,-50%) scale(${0.7 + Math.random()*0.6})`;
+        group.style.zIndex = 290;
+        winOverlay.appendChild(group);
+      }
+
+      // bring the top message into view
+      setTimeout(()=> {
+        const wm = document.getElementById('winMessage');
+        wm.style.transform = 'translate(-50%,-50%) scale(1)';
+      }, 400);
+
+      // optionally remove original garden from view
+      document.querySelector('.garden').style.opacity = 0.04;
+    }
+
+    /********** Replay / Reset **********/
+    replayBtn.addEventListener('click', () => {
+      // simple reset approach: reload page to guarantee fresh state
+      location.reload();
+    });
+
+    /********** Accessibility: enable keyboard to click focused flowers (optional) **********/
+    // allow space/enter to "click" focused flower
+    document.addEventListener('keydown', (e) => {
+      if ((e.key === 'Enter' || e.key === ' ') && document.activeElement && document.activeElement.classList.contains('flower')) {
+        document.activeElement.click();
+      }
+    });
+
+    /********** Make the flowers keyboard-focusable for a11y **********/
+    const makeFocusable = () => {
+      document.querySelectorAll('.flower').forEach(el => {
+        el.setAttribute('tabindex','0');
+        el.setAttribute('role','button');
+        el.setAttribute('aria-label','flower - click to bloom');
+      });
+    };
+    // small delay to ensure flowers exist
+    setTimeout(makeFocusable, 80);
+  </script>
+</body>
+</html>
